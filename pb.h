@@ -71,6 +71,9 @@ typedef signed   long long  int64_t;
 # endif /* __sun__ || __digital__ */
 #endif
 
+#define DOUBLE_INT_MIN (-9007199254740991LL-1)
+#define DOUBLE_INT_MAX (9007199254740991LL)
+
 #include <stddef.h>
 #include <limits.h>
 

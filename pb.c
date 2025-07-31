@@ -120,6 +120,10 @@ static int lua53_rawgetp(lua_State *L, int idx, const void *p)
 { return lua_rawgetp(L, idx, p), lua_type(L, -1); }
 #endif
 
+#ifndef LUA_HAS_INTEGER
+#define LUA_HAS_INTEGER (LUA_VERSION_NUM >= 503)
+#endif
+
 /* protobuf global state */
 
 #define lpbS_state(LS)   ((LS)->state)
@@ -264,6 +268,13 @@ static pb_Slice lpb_toslice(lua_State *L, int idx) {
         size_t len;
         const char *s = lua_tolstring(L, idx, &len);
         return pb_lslice(s, len);
+    } else if (type == LUA_TNUMBER) {
+        size_t len;
+        lua_Number num = lua_tonumberx(L, idx, NULL);
+        lua_pushnumber(L, num);
+        const char *s = lua_tolstring(L, -1, &len);
+        lua_pop(L, 1);
+        return pb_lslice(s, len);
     } else if (type == LUA_TUSERDATA) {
         pb_Buffer *buffer;
         pb_Slice *s;
@@ -307,13 +318,13 @@ static int lpb_hexchar(char ch) {
 static uint64_t lpb_tointegerx(lua_State *L, int idx, int *isint) {
     int neg = 0;
     const char *s, *os;
-#if LUA_VERSION_NUM >= 503
+#if LUA_HAS_INTEGER
     uint64_t v = (uint64_t)lua_tointegerx(L, idx, isint);
-    if (*isint) return v;
+    if (*isint && v <= DOUBLE_INT_MAX) return v;
 #else
     uint64_t v = 0;
     lua_Number nv = lua_tonumberx(L, idx, isint);
-    if (*isint) {
+    if (*isint && nv >= (lua_Number)DOUBLE_INT_MIN && nv <= (lua_Number)DOUBLE_INT_MAX ) {
         if (nv < (lua_Number)INT64_MIN || nv > (lua_Number)INT64_MAX)
             luaL_error(L, "number has no integer representation");
         return (uint64_t)(int64_t)nv;
@@ -351,7 +362,8 @@ static uint64_t lpb_checkinteger(lua_State *L, int idx) {
 }
 
 static void lpb_pushinteger(lua_State *L, int64_t n, int u, int mode) {
-    if (mode != LPB_NUMBER && ((u && n < 0) || n < INT_MIN || n > UINT_MAX)) {
+    //if (mode != LPB_NUMBER && ((u && n < 0) || n < INT_MIN || n > UINT_MAX)) {
+    if (mode != LPB_NUMBER && ((u && n < 0) || n < DOUBLE_INT_MIN || n > DOUBLE_INT_MAX)) {
         char buff[32], *p = buff + sizeof(buff) - 1;
         int neg = !u && n < 0;
         uint64_t un = !u && neg ? ~(uint64_t)n + 1 : (uint64_t)n;
@@ -364,9 +376,9 @@ static void lpb_pushinteger(lua_State *L, int64_t n, int u, int mode) {
             *--p = 'x', *--p = '0';
         }
         if (neg) *--p = '-';
-        *--p = '#';
+//        *--p = '#';
         lua_pushstring(L, p);
-    } else if (LUA_VERSION_NUM >= 503 && sizeof(lua_Integer) >= 8)
+    } else if (LUA_HAS_INTEGER && sizeof(lua_Integer) >= 8)
         lua_pushinteger(L, (lua_Integer)n);
     else
         lua_pushnumber(L, (lua_Number)n);
