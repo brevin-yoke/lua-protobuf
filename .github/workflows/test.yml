@@ -40,11 +40,16 @@ jobs:
       - name: Install Luarocks
         uses: leafo/gh-actions-luarocks@master
       - name: Build
+        if: matrix.luaVersion != 'luajit-openresty'
         run: |
           luarocks make $ROCKSPEC CFLAGS="-O3 -fPIC -Wall -Wextra --coverage" LIBFLAG="-shared --coverage"
+      - name: Build For LuaJIT
+        if: matrix.luaVersion == 'luajit-openresty'
+        run: |
+          luarocks make $ROCKSPEC CFLAGS="-O3 -fPIC -Wall -Wextra --coverage -DOPENRESTY_LUAJIT" LIBFLAG="-shared --coverage"
       - name: Run Tests
         run: |
-          lua test.lua
+          lua testx.lua
       - name: Run LCov
         run: |
           mkdir -p coverage

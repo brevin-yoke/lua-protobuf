@@ -264,6 +264,13 @@ static pb_Slice lpb_toslice(lua_State *L, int idx) {
         size_t len;
         const char *s = lua_tolstring(L, idx, &len);
         return pb_lslice(s, len);
+    } else if (type == LUA_TNUMBER) {
+        size_t len;
+        lua_Number num = lua_tonumberx(L, idx, NULL);
+        lua_pushnumber(L, num);
+        const char *s = lua_tolstring(L, -1, &len);
+        lua_pop(L, 1);
+        return pb_lslice(s, len);
     } else if (type == LUA_TUSERDATA) {
         pb_Buffer *buffer;
         pb_Slice *s;
@@ -306,12 +313,20 @@ static int lpb_hexchar(char ch) {
 
 static uint64_t lpb_tointegerx(lua_State *L, int idx, int *isint) {
     int neg = 0;
+    uint64_t v = 0;
+
+#if LUA_VERSION_NUM >= 501
+    if (lua_type(L, idx) == LUA_TSTRING &&  lua_rawlen(L, idx) > 15)
+#else
+    if (lua_type(L, idx) == LUA_TSTRING &&  lua_objlen(L, idx) > 15)
+#endif
+        goto STRTOINT;
+
     const char *s, *os;
 #if LUA_VERSION_NUM >= 503
-    uint64_t v = (uint64_t)lua_tointegerx(L, idx, isint);
+    v = (uint64_t)lua_tointegerx(L, idx, isint);
     if (*isint) return v;
 #else
-    uint64_t v = 0;
     lua_Number nv = lua_tonumberx(L, idx, isint);
     if (*isint) {
         if (nv < (lua_Number)INT64_MIN || nv > (lua_Number)INT64_MAX)
@@ -319,6 +334,7 @@ static uint64_t lpb_tointegerx(lua_State *L, int idx, int *isint) {
         return (uint64_t)(int64_t)nv;
     }
 #endif
+STRTOINT:
     if ((os = s = lua_tostring(L, idx)) == NULL) return 0;
     while (*s == '#' || *s == '+' || *s == '-')
         neg = (*s == '-') ^ neg, ++s;
@@ -350,8 +366,12 @@ static uint64_t lpb_checkinteger(lua_State *L, int idx) {
     return v;
 }
 
+#define DOUBLE_INT_MIN (-9007199254740991LL-1)
+#define DOUBLE_INT_MAX (9007199254740991LL)
+
 static void lpb_pushinteger(lua_State *L, int64_t n, int u, int mode) {
-    if (mode != LPB_NUMBER && ((u && n < 0) || n < INT_MIN || n > UINT_MAX)) {
+    //if (mode != LPB_NUMBER && ((u && n < 0) || n < INT_MIN || n > UINT_MAX)) {
+    if (mode != LPB_NUMBER && ((u && n < 0) || n < DOUBLE_INT_MIN || n > DOUBLE_INT_MAX)) {
         char buff[32], *p = buff + sizeof(buff) - 1;
         int neg = !u && n < 0;
         uint64_t un = !u && neg ? ~(uint64_t)n + 1 : (uint64_t)n;
@@ -364,9 +384,13 @@ static void lpb_pushinteger(lua_State *L, int64_t n, int u, int mode) {
             *--p = 'x', *--p = '0';
         }
         if (neg) *--p = '-';
-        *--p = '#';
+//        *--p = '#';
         lua_pushstring(L, p);
+#ifdef OPENRESTY_LUAJIT
+    } else if (sizeof(lua_Integer) >= 8)
+#else
     } else if (LUA_VERSION_NUM >= 503 && sizeof(lua_Integer) >= 8)
+#endif
         lua_pushinteger(L, (lua_Integer)n);
     else
         lua_pushnumber(L, (lua_Number)n);
