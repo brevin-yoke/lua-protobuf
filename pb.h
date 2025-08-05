@@ -308,6 +308,7 @@ struct pb_State {
 
 struct pb_Field {
     pb_Name *name;
+    pb_Name *parent_name;
     pb_Type *type;
     pb_Name *default_value;
     int32_t  number;
@@ -1271,6 +1272,7 @@ PB_API pb_Field *pb_newfield(pb_State *S, pb_Type *t, pb_Name *fname, int32_t nu
     f->name   = fname;
     f->type   = t;
     f->number = number;
+    f->parent_name = t->name;
     if (nf->value && pb_field(t, nf->value->number) != nf->value)
         pbT_freefield(S, nf->value), --t->field_count;
     if (tf->value && pb_fname(t, tf->value->name) != tf->value)

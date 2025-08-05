@@ -102,7 +102,7 @@ function _G.test_io.test()
    fail("type 'Foo' does not exists", function() pb.encode("Foo", {}) end)
    fail("type 'Foo' does not exists", function() pb.decode("Foo", "") end)
 
-   fail("string expected for field 'name', got boolean",
+   fail("string expected for field '.Person.name', got boolean",
         function() pb.encode("Person", { name = true }) end)
 
    fail("type mismatch for field 'name' at offset 2, bytes expected for type string, got varint",
@@ -1599,10 +1599,10 @@ function _G.test_pack_unpack()
    eq(m3, default_map)
    eq(f3, default_friend)
 
-   fail("number/'#number' expected for field 'age', got string",
+   fail("number/'#number' expected for field '.Person.age', got string",
             function() pb.pack("Person", nil, "abc") end)
-   --fail("bad argument #2 to 'pack' (string expected for field 'name', got number)",
-   --         function() pb.pack("Person", 100, "abc") end)
+   fail("bad argument #2 to 'pack' (number/'#number' expected for field '.Person.age', got string)",
+           function() pb.pack("Person", 100, "abc") end)
    fail("type mismatch for field 'name' at offset 2, bytes expected for type string, got 32bit",
             function() pb.unpack("Person", "\13\1") end)
 

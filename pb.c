@@ -1665,8 +1665,9 @@ static void lpbE_field(lpb_Env *e, int idx, const pb_Field *f, lpbE_Mode m) {
         break;
     default:
         r = lpb_readvalue(L, idx, f->type_id, &v);
-        if (r < 0) argcheck(L, 0, 2, "%s expected for field '%s', got %s",
+        if (r < 0) argcheck(L, 0, 2, "%s expected for field '%s.%s', got %s",
                 lpb_expected(f->type_id),
+                (const char*)f->parent_name,
                 (const char*)f->name, luaL_typename(L, idx));
         if (m == lpbE_NoZero && r == 0) return;
         else if (m != lpbE_Raw) lpbE_writetag(e, f);
