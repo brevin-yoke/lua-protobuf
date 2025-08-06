@@ -266,8 +266,7 @@ static pb_Slice lpb_toslice(lua_State *L, int idx) {
         return pb_lslice(s, len);
     } else if (type == LUA_TNUMBER) {
         size_t len;
-        lua_Number num = lua_tonumberx(L, idx, NULL);
-        lua_pushnumber(L, num);
+        lua_pushvalue(L, idx);
         const char *s = lua_tolstring(L, -1, &len);
         lua_pop(L, 1);
         return pb_lslice(s, len);
