@@ -310,6 +310,19 @@ static int lpb_hexchar(char ch) {
     return -1;
 }
 
+static const char* lpb_tolstring(lua_State *L, int idx, size_t *len) {
+    int type = lua_type(L, idx);
+    if (type == LUA_TSTRING) {
+        return lua_tolstring(L, idx, len);
+    } else if (type == LUA_TNUMBER) {
+        lua_pushvalue(L, idx);
+        const char *s = lua_tolstring(L, -1, len);
+        lua_pop(L, 1);
+        return s;
+    }
+    return NULL;
+}
+
 static uint64_t lpb_tointegerx(lua_State *L, int idx, int *isint) {
     int neg = 0;
     uint64_t v = 0;
@@ -1740,7 +1753,7 @@ static void lpbE_encode(lpb_Env *e, int idx, const pb_Type *t) {
         lua_pushnil(L);
         while (lua_next(L, lpb_relindex(idx, 1))) {
             size_t len;
-            const char *s = lua_tolstring(L, -2, &len);
+            const char *s = lpb_tolstring(L, -2, &len);
             const pb_Field *f =
                 pb_fname(t, lpb_name(e->LS, pb_lslice(s, len)));
             if (f != NULL) lpb_encode_onefield(e, -1, t, f);
