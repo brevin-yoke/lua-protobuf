@@ -434,7 +434,10 @@ static int lpb_readvalue(lua_State *L, int idx, int type, lpb_Value *out) {
     int ret;
     switch (type) {
     case PB_Tbool:
-        out->u32 = lua_toboolean(L, idx);
+        if (lua_isboolean(L, idx))
+            out->u32 = lua_toboolean(L, idx);
+        else
+            out->u32 = (uint32_t)lpb_checkinteger(L, idx);;
         return (out->u32 != 0);
     case PB_Tdouble: case PB_Tfloat:
         out->lnum = lua_tonumberx(L, idx, &ret);

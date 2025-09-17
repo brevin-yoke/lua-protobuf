@@ -295,6 +295,8 @@ function _G.test_type()
    }
 
    check_msg(".TestTypes", data)
+   check_msg(".TestTypes", {bv = 0}, {bv = false})
+   check_msg(".TestTypes", {bv = 22101112222}, {bv = true})
    pb.clear "TestTypes"
 
    check_load [[
