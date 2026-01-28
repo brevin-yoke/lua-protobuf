@@ -567,6 +567,25 @@ function _G.test_enum()
              { aliased_enumf = { "ZERO", "FIRST", "TWO", 23, "ONE" } },
              { aliased_enumf = { "ZERO", "FIRST", "TWO", 23, "FIRST" } })
    assert(pb.type ".google.protobuf.FileDescriptorSet")
+   check_load [[
+   enum Common {
+    COMMON_NONE = 0;
+    val1 = 20;
+    val2 = 63;
+    val3 = 801;
+    val4 = 255;
+    val5 = -1;  // 这个值会丢失
+    val6 = 25;
+    val7 = 256;
+    val8 = 99;
+    val9 = 50;
+}
+   ]]
+   local neg_count = 0
+   for field_name, number in pb.fields("Common") do
+      if number < 0 then neg_count = neg_count + 1 end
+   end
+   assert(neg_count == 1)
 end
 
 function _G.test_packed()
@@ -962,7 +981,7 @@ function _G.test_buffer()
    eq(#b, 6)
 
    fail("integer format error: 'foo'", function() buffer.pack("v", "foo") end)
-   if _VERSION == "Lua 5.3" or _VERSION == "Lua 5.4" then
+   if _VERSION == "Lua 5.3" or _VERSION == "Lua 5.4" or _VERSION == "Lua 5.5" then
       fail("integer format error", function() buffer.pack("v", 1e308) end)
    else
       fail("number has no integer representation", function() buffer.pack("v", 1e308) end)
@@ -983,6 +1002,9 @@ function _G.test_buffer()
    b = buffer.new()
    eq(b:pack("i", -1):tohex(), "FF FF FF FF FF FF FF FF FF 01")
    assert(pb.type ".google.protobuf.FileDescriptorSet")
+
+   b = buffer.new()
+   eq(b:result(), "")
 end
 
 function _G.test_slice()
@@ -1050,6 +1072,9 @@ function _G.test_slice()
       s1:enter()
       s1:leave(3)
    end)
+
+   s:reset()
+   eq(s:result(), "")
 
    s:reset "\1\2\3"
    eq({s:leave()}, {s, 1})
